@@ -30,9 +30,6 @@ public class Publisher extends UntypedActor {
     @Override
     public void onReceive(Object message) throws Exception {
         switch (message.getClass().getSimpleName()) {
-            case "TopicMessage":
-                log.error("I cannot handle topic messages!");
-                break;
             case "ChatMessage":
                 ChatMessage chatMessage = ChatMessage.class.cast(message);
                 publishChat(chatMessage);

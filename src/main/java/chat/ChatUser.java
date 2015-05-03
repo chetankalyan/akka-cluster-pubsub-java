@@ -3,8 +3,11 @@ package chat;
 import akka.actor.ActorRef;
 import akka.actor.Props;
 import akka.actor.UntypedActor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import scala.concurrent.duration.FiniteDuration;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
@@ -14,11 +17,15 @@ import java.util.concurrent.TimeUnit;
  * Created by chetan.k on 5/1/15.
  */
 public class ChatUser extends UntypedActor {
-    private static final List<String> chatPhrases = Arrays.asList("hi", "hello", "what's the time?", "bye", "goodbye");
-    private              Random       random      = new Random();
+
+    private Random random = new Random();
     private ActorRef subscriber;
     private ActorRef publisher;
     private String   userId;
+    private List<String> chatIdList = new ArrayList<>();
+
+    private static final List<String> chatPhrases = Arrays.asList("hi", "hello", "what's the time?", "bye", "goodbye");
+    private static final Logger       log         = LoggerFactory.getLogger(ChatUser.class);
 
     public ChatUser(String userId) {
         this.userId = userId;
@@ -40,6 +47,18 @@ public class ChatUser extends UntypedActor {
         this.publisher = this.getContext().actorOf(Props.create(Publisher.class, this.userId), "publisher");
     }
 
+    public void joinChat(String chatId) {
+        log.info("{} joining {}", this.userId, chatId);
+        this.chatIdList.add(chatId);
+        this.subscriber.tell(new TopicMessage(TopicMessage.MessageType.SUBSCRIBE, chatId), this.getSelf());
+    }
+
+    public void leaveChat(String chatId) {
+        log.info("{} leaving {}", this.userId, chatId);
+        this.chatIdList.remove(chatId);
+        this.subscriber.tell(new TopicMessage(TopicMessage.MessageType.UNSUBSCRIBE, chatId), this.getSelf());
+    }
+
     @Override
     public void postRestart(Throwable reason) throws Exception {
         // do nothing, else the scheduler will get kicked in again.
@@ -57,14 +76,21 @@ public class ChatUser extends UntypedActor {
                 // Send a message now
                 String chatString = chatPhrases.get(this.random.nextInt(chatPhrases.size()));
                 this.publisher.tell(new ChatMessage(this.userId, "test", chatString), this.getSelf());
-                // schedule the next send at some random interval between 5 and 20 seconds from now
+                // schedule the next send at some random interval between 5 and 10 seconds from now
                 this.getContext().system().scheduler()
-                        .scheduleOnce(FiniteDuration.create(this.random.nextInt(15) + 5, TimeUnit.SECONDS),
+                        .scheduleOnce(FiniteDuration.create(500, TimeUnit.MICROSECONDS),
                                 this.getSelf(),
                                 new Tick(),
                                 this.getContext().system().dispatcher(),
                                 this.getSelf());
                 break;
+            case "ChatMessage":
+                ChatMessage chatMessage = ChatMessage.class.cast(message);
+                if (!chatMessage.getSender().equals(this.userId)) {
+                    // we have received a direct message from another user!
+                    log.info("[{} Incoming direct message] {}:{}. TimeTaken={}ms", this.userId, chatMessage.getSender(),
+                            chatMessage.getMessage(), (System.nanoTime() - chatMessage.getTimestamp())/(1e6));
+                }
         }
     }
 }

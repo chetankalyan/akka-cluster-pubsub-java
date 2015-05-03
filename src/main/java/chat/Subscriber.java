@@ -42,8 +42,8 @@ public class Subscriber extends UntypedActor {
             case "ChatMessage":
                 ChatMessage chatMessage = ChatMessage.class.cast(message);
                 if (!chatMessage.getSender().equals(this.userId)) {
-                    log.info("[{} Incoming message] {}:{}. TimeTaken={}", this.userId, chatMessage.getSender(),
-                            chatMessage.getMessage(), (System.nanoTime() - chatMessage.getTimestamp()));
+                    log.info("[{} Incoming topic message] {}:{}. TimeTaken={}ms", this.userId, chatMessage.getSender(),
+                            chatMessage.getMessage(), (System.nanoTime() - chatMessage.getTimestamp())/(1e6));
                 }
                 break;
             default:
