@@ -29,6 +29,7 @@ public class ChatUser extends UntypedActor {
 
     public ChatUser(String userId) {
         this.userId = userId;
+        log.info("{} actor created",this.self());
     }
 
     @Override
@@ -78,7 +79,7 @@ public class ChatUser extends UntypedActor {
                 this.publisher.tell(new ChatMessage(this.userId, "test", chatString), this.getSelf());
                 // schedule the next send at some random interval between 5 and 10 seconds from now
                 this.getContext().system().scheduler()
-                        .scheduleOnce(FiniteDuration.create(500, TimeUnit.MICROSECONDS),
+                        .scheduleOnce(FiniteDuration.create(this.random.nextInt(5), TimeUnit.SECONDS),
                                 this.getSelf(),
                                 new Tick(),
                                 this.getContext().system().dispatcher(),
